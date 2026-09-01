@@ -1,33 +1,38 @@
 ---
 name: metaskill
-description: Clasifica y enruta tareas sin gastar tokens de LLM. Usar ANTES de empezar cualquier tarea no trivial para decidir tier de modelo, arquetipo e instrucciones de trabajo. También cuando el usuario pregunta qué modelo usar, dice "routea esto", "qué modelo para esto", o hay que elegir entre modelo barato y premium. (user)
+description: "Use when starting any non-trivial task, before writing code, to decide work approach and complexity tier. Also when user asks which model to use, says 'route this', 'qué modelo', or when choosing between cheap and premium model. Triggers on: task classification, model selection, cost optimization, routing."
 ---
 
-# MetaSkill — router zero-token
+# MetaSkill — zero-token task router
 
-Clasificar primero, trabajar después. La elección de modelo es una decisión determinista y local, no una corazonada que quema tokens.
+Before writing a single line of code, classify the task. Read `index.json` in this skill's directory, tokenize the user's request mentally, and match against archetype keywords.
 
-## Protocolo
+## Protocol
 
-1. Ejecuta el router con la petición del usuario (el script `metaskill.py` vive en la carpeta de este skill):
-   ```
-   python metaskill.py "<petición del usuario>" --json
-   ```
-2. Lee el resultado:
-   - `tier` + `model_alias`: el tier de modelo que debe ejecutar la tarea.
-   - `fallback` / `fallback_aliases`: alternativa si ese tier no está disponible.
-   - `instructions`: instrucciones de trabajo del arquetipo — síguelas.
-   - `tools`: herramientas sugeridas.
-3. Si `status` es `unclassified`: la tarea es nueva o ambigua → aplica `premium_reasoning` según la política de fallbacks de `index.json`.
-4. Ejecuta la tarea siguiendo las `instructions` del arquetipo ganador.
+1. **Read** `index.json` → scan `tasks[]` for keyword matches against the user's request
+2. **Classify**: pick the archetype with ≥2 keyword matches OR >20% coverage. If none matches → `arch_quick_fix` with complexity 1
+3. **Report** (briefly, 1-2 lines max):
+   - `[archetype] complexity: N/5`
+   - If complexity ≤ 2: "→ consider cheaper model (qwen-flash / deepseek-flash) to save tokens"
+   - If complexity ≥ 4: "→ verify you're on a capable model (qwen-max / deepseek-pro)"
+4. **Follow** the archetype's `instructions` field as your work protocol
+5. **Use** suggested `tools` when applicable
 
-## Reglas
+## Rules
 
-- El routing es local y de coste cero: no gastar tokens de LLM en decidir el modelo.
-- Si el usuario nombra un modelo explícitamente, su decisión manda sobre el router.
-- Peticiones con varias partes independientes: clasificar cada parte por separado.
-- El índice es `index.json` (arquetipos, tiers, alias y política de fallbacks); para añadir arquetipos se edita ese archivo, no este skill.
+- Classification is in-context: read index.json, match keywords in your reasoning. Zero shell calls, zero latency.
+- If user names a model explicitly, their choice overrides the router.
+- Multi-part requests: classify each part independently.
+- Never shell out to `python metaskill.py` — that's for external CI/agents, not for in-session use.
+- The index has 16 archetypes covering: security, frontend, backend, devops, data, architecture, docs, quick-fix, testing, database, mobile, migration, CLI, game-dev, research, and more.
 
-## Sin Python
+## Tier → Model mapping (Qwen Code / DashScope)
 
-Si `python` no está disponible, clasifica manualmente: compara las palabras de la petición con los `keywords` de cada arquetipo en `index.json` y aplica la misma política (mejor cobertura de keywords; sin matches → `premium_reasoning`).
+| Tier | Recommended models | Use for |
+|------|-------------------|---------|
+| `local_zero_token` | ollama (if available) | typos, trivial patches |
+| `budget_fast` | qwen-flash, deepseek-flash, glm-flash | docs, scripts, simple tasks |
+| `standard_coding` | deepseek-pro, qwen-plus | product development |
+| `premium_reasoning` | qwen-max, deepseek-pro-max | architecture, migrations, research |
+
+Since Qwen Code runs one model per session, the router **suggests** model changes — the user decides whether to restart with a different model.

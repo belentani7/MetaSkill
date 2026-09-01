@@ -1,15 +1,15 @@
 {
-  "version": "8.0.0",
+  "version": "9.0.0",
   "schema": "archetype-index",
-  "engine": "jaccard-zero-token-v2",
-  "last_updated": "2026-08-13",
+  "engine": "jaccard-zero-token-v3",
+  "last_updated": "2026-09-01",
   "design_lifetime_years": 8,
-  "note": "Los aliases de modelo son solo nombres. Si un modelo muere, actualiza SOLO model_aliases. La logica de enrutamiento jamas cambia.",
+  "note": "Model aliases reflect Qwen Code / DashScope ecosystem. Update ONLY model_aliases when models change. Routing logic never changes.",
   "model_aliases": {
-    "premium_reasoning": "claude-3-opus",
-    "standard_coding": "claude-3.5-sonnet",
-    "budget_fast": "gpt-4o-mini",
-    "local_zero_token": "ollama-llama3-70b"
+    "premium_reasoning": "qwen-max / deepseek-pro-max",
+    "standard_coding": "deepseek-pro / qwen-plus",
+    "budget_fast": "qwen-flash / deepseek-flash / glm-flash",
+    "local_zero_token": "ollama (if available)"
   },
   "fallback_policy": {
     "premium_reasoning": ["standard_coding", "budget_fast", "local_zero_token"],
@@ -21,212 +21,212 @@
     {
       "id": "arch_security_audit",
       "archetype": "security_critical",
-      "label": "Auditoria de seguridad / SAST",
-      "description": "Auditoria SAST de codigo fuente contra OWASP Top 10, revision de crypto, auth, JWT, inyeccion, XSS, CSRF.",
-      "keywords": ["seguridad", "auditoria", "owasp", "vulnerabilidad", "xss", "csrf", "cryptografia", "hack", "jwt", "auth", "cve", "pentesting", "sast", "inyeccion", "malware", "exploit", "ssl", "cifrado", "hash", "sal", "token", "permisos"],
+      "label": "Security audit / SAST",
+      "description": "SAST audit against OWASP Top 10, crypto review, auth, JWT, injection, XSS, CSRF.",
+      "keywords": ["security", "seguridad", "audit", "auditoria", "owasp", "vulnerability", "vulnerabilidad", "xss", "csrf", "cryptography", "criptografia", "hack", "jwt", "auth", "cve", "pentesting", "sast", "injection", "inyeccion", "malware", "exploit", "ssl", "encryption", "cifrado", "hash", "salt", "sal", "token", "permissions", "permisos"],
       "complexity": 5,
       "routing": {
         "tier": "premium_reasoning",
         "fallback": ["standard_coding"],
         "tools": ["semgrep", "bandit", "owasp_zap", "trivy", "gitleaks"]
       },
-      "instructions_for_claude": "Actua como auditor SAST. Analiza el codigo contra OWASP Top 10. Entrega un reporte de severidad (critico/alto/medio/bajo), el fragmento vulnerable localizado y el codigo corregido."
+      "instructions": "Act as SAST auditor. Analyze code against OWASP Top 10. Deliver severity report (critical/high/medium/low), locate the vulnerable fragment, and provide corrected code."
     },
     {
       "id": "arch_frontend_ui",
       "archetype": "ui_creative",
-      "label": "Frontend & UI creativa",
-      "description": "Componentes web, animaciones GSAP/Three.js, Tailwind, React, responsive y accesible.",
-      "keywords": ["react", "css", "tailwind", "animacion", "gsap", "frontend", "componente", "ui", "ux", "dashboard", "html", "javascript", "web", "svg", "responsive", "figma", "interfaz", "bootstrap", "vue", "svelte", "next", "accesibilidad", "a11y"],
+      "label": "Frontend & creative UI",
+      "description": "Web components, GSAP/Three.js animations, Tailwind, React, responsive and accessible.",
+      "keywords": ["react", "css", "tailwind", "animation", "animacion", "gsap", "frontend", "component", "componente", "ui", "ux", "dashboard", "html", "javascript", "web", "svg", "responsive", "figma", "interface", "interfaz", "bootstrap", "vue", "svelte", "next", "accessibility", "accesibilidad", "a11y"],
       "complexity": 3,
       "routing": {
         "tier": "standard_coding",
         "fallback": ["budget_fast"],
         "tools": ["tailwind", "storybook", "framer_motion", "gsap", "three.js"]
       },
-      "instructions_for_claude": "Crea componentes modulares, accesibles (a11y) y responsive. Usa la sintaxis estandar actual del framework indicado. No uses CSS inline salvo que sea imprescindible."
+      "instructions": "Create modular, accessible (a11y), responsive components. Use current framework standard syntax. No inline CSS unless strictly necessary."
     },
     {
       "id": "arch_backend_api",
       "archetype": "backend_engineering",
-      "label": "Backend / APIs RESTful",
-      "description": "Diseno e implementacion de APIs, microservicios, autenticacion, endpoints, FastAPI/Django/Express.",
-      "keywords": ["api", "rest", "backend", "endpoint", "fastapi", "django", "express", "microservicio", "crud", "oauth", "swagger", "graphql", "grpc", "servidor", "server", "flask", "node", "async", "webhook", "middleware", "cors", "rate limit"],
+      "label": "Backend / RESTful APIs",
+      "description": "API design and implementation, microservices, authentication, endpoints, FastAPI/Django/Express.",
+      "keywords": ["api", "rest", "backend", "endpoint", "fastapi", "django", "express", "microservice", "microservicio", "crud", "oauth", "swagger", "graphql", "grpc", "server", "servidor", "flask", "node", "async", "webhook", "middleware", "cors", "rate limit"],
       "complexity": 4,
       "routing": {
         "tier": "standard_coding",
         "fallback": ["premium_reasoning"],
         "tools": ["fastapi", "jwt", "sqlalchemy", "openapi", "postman"]
       },
-      "instructions_for_claude": "Disena la API con contratos claros (OpenAPI/Swagger). Implementa validacion de entrada, manejo de errores estructurado, autenticacion segura y documentacion de cada endpoint."
+      "instructions": "Design API with clear contracts (OpenAPI/Swagger). Implement input validation, structured error handling, secure authentication, and per-endpoint documentation."
     },
     {
       "id": "arch_devops_iac",
       "archetype": "infrastructure",
-      "label": "DevOps / Infraestructura / IaC",
+      "label": "DevOps / Infrastructure / IaC",
       "description": "Docker, Kubernetes, Terraform, CI/CD, pipelines, cloud AWS/Azure/GCP.",
-      "keywords": ["docker", "kubernetes", "terraform", "aws", "azure", "gcp", "pipeline", "ci", "cd", "github actions", "gitlab", "cloud", "deploy", "despliegue", "infraestructura", "iac", "ansible", "helm", "kubernete", "contener", "cluster", "yaml", "devops", "monitor", "grafana", "prometheus"],
+      "keywords": ["docker", "kubernetes", "terraform", "aws", "azure", "gcp", "pipeline", "ci", "cd", "github actions", "gitlab", "cloud", "deploy", "despliegue", "infrastructure", "infraestructura", "iac", "ansible", "helm", "container", "contener", "cluster", "yaml", "devops", "monitor", "grafana", "prometheus"],
       "complexity": 4,
       "routing": {
         "tier": "standard_coding",
         "fallback": ["premium_reasoning"],
         "tools": ["terraform", "ansible", "docker", "kubectl", "helm"]
       },
-      "instructions_for_claude": "Genera Infrastructure as Code idempotente. Incluye manejo de estado, locks y rollback. Prioriza la reproducibilidad: el mismo codigo debe producir el mismo entorno."
+      "instructions": "Generate idempotent Infrastructure as Code. Include state management, locks, and rollback. Prioritize reproducibility: same code must produce same environment."
     },
     {
       "id": "arch_data_analysis",
       "archetype": "data_science",
-      "label": "Ciencia de datos / Analitica",
-      "description": "Analisis de datos, pandas, numpy, estadistica, machine learning, visualizacion, reportes.",
-      "keywords": ["datos", "data", "analisis", "pandas", "numpy", "machine learning", "ml", "ia", "inteligencia artificial", "estadistica", "grafico", "visualizacion", "jupyter", "regresion", "clasificacion", "dataset", "csv", "python", "scikit", "tensorflow", "pytorch", "serie temporal", "forecast", "prediccion"],
+      "label": "Data science / Analytics",
+      "description": "Data analysis, pandas, numpy, statistics, machine learning, visualization, reports.",
+      "keywords": ["data", "datos", "analysis", "analisis", "pandas", "numpy", "machine learning", "ml", "ai", "ia", "artificial intelligence", "inteligencia artificial", "statistics", "estadistica", "chart", "grafico", "visualization", "visualizacion", "jupyter", "regression", "regresion", "classification", "clasificacion", "dataset", "csv", "python", "scikit", "tensorflow", "pytorch", "time series", "serie temporal", "forecast", "prediction", "prediccion"],
       "complexity": 4,
       "routing": {
         "tier": "premium_reasoning",
         "fallback": ["standard_coding"],
         "tools": ["pandas", "numpy", "matplotlib", "jupyter", "scikit-learn"]
       },
-      "instructions_for_claude": "Realiza el analisis paso a paso: limpieza, exploracion, modelado y conclusiones accionables. Documenta las decisiones y muestra el codigo de cada etapa."
+      "instructions": "Perform analysis step by step: cleaning, exploration, modeling, and actionable conclusions. Document decisions and show code for each stage."
     },
     {
       "id": "arch_system_architecture",
       "archetype": "architecture",
-      "label": "Arquitectura de sistemas",
-      "description": "Diseno de arquitectura, escalabilidad, diagramas, decisiones tecnicas, patrones.",
-      "keywords": ["arquitectura", "diseno de sistema", "system design", "escalable", "patron", "patrones", "microservicios", "monolito", "eventos", "cola", "kafka", "redis", "cache", "escalabilidad", "disponibilidad", "diagrama", "uml", "tolerancia", "consistencia", "cap", "arquitecto", "alto nivel"],
+      "label": "System architecture",
+      "description": "Architecture design, scalability, diagrams, technical decisions, patterns.",
+      "keywords": ["architecture", "arquitectura", "system design", "diseno de sistema", "scalable", "escalable", "pattern", "patron", "patterns", "patrones", "microservices", "microservicios", "monolith", "monolito", "events", "eventos", "queue", "cola", "kafka", "redis", "cache", "scalability", "escalabilidad", "availability", "disponibilidad", "diagram", "diagrama", "uml", "tolerance", "tolerancia", "consistency", "consistencia", "cap", "architect", "arquitecto", "high level", "alto nivel"],
       "complexity": 5,
       "routing": {
         "tier": "premium_reasoning",
         "fallback": ["standard_coding"],
         "tools": ["drawio", "plantuml", "mermaid"]
       },
-      "instructions_for_claude": "Actua como arquitecto de software senior. Analiza trade-offs, presenta 2-3 opciones con pros/contras, recomienda una y justificala. Incluye diagramas ASCII o Mermaid."
+      "instructions": "Act as senior software architect. Analyze trade-offs, present 2-3 options with pros/cons, recommend one and justify. Include ASCII or Mermaid diagrams."
     },
     {
       "id": "arch_docs_writing",
       "archetype": "documentation",
-      "label": "Documentacion / Escritura",
-      "description": "Documentacion tecnica, README, guias, tutoriales, comentarios, manuales.",
-      "keywords": ["documentacion", "docs", "readme", "guia", "tutorial", "manual", "wiki", "escribir", "redactar", "markdown", "changelog", "comentario", "explicar", "explicacion", "texto", "articulo", "post", "blog"],
+      "label": "Documentation / Writing",
+      "description": "Technical docs, README, guides, tutorials, comments, manuals.",
+      "keywords": ["documentation", "documentacion", "docs", "readme", "guide", "guia", "tutorial", "manual", "wiki", "write", "escribir", "draft", "redactar", "markdown", "changelog", "comment", "comentario", "explain", "explicar", "explanation", "explicacion", "text", "texto", "article", "articulo", "post", "blog"],
       "complexity": 2,
       "routing": {
         "tier": "budget_fast",
         "fallback": ["local_zero_token"],
         "tools": ["markdown", "asciidoc", "mermaid"]
       },
-      "instructions_for_claude": "Escribe documentacion clara, estructurada y con ejemplos reales de uso. Prioriza la claridad sobre la extension. Usa encabezados jerarquicos y bloques de codigo."
+      "instructions": "Write clear, structured documentation with real usage examples. Prioritize clarity over length. Use hierarchical headings and code blocks."
     },
     {
       "id": "arch_quick_fix",
       "archetype": "simple_maintenance",
-      "label": "Fix rapido / mantenimiento",
-      "description": "Bugs simples, typos, errores de log, parches minimos, ajustes rapidos.",
-      "keywords": ["bug", "error", "typo", "arreglar", "log", "simple", "rapido", "fix", "corregir", "fallo", "crash", "warning", "exception", "patchear", "parche", "roto", "no funciona"],
+      "label": "Quick fix / maintenance",
+      "description": "Simple bugs, typos, log errors, minimal patches, quick adjustments.",
+      "keywords": ["bug", "error", "typo", "fix", "arreglar", "log", "simple", "quick", "rapido", "correct", "corregir", "fail", "fallo", "crash", "warning", "exception", "patch", "patchear", "parche", "broken", "roto", "not working", "no funciona"],
       "complexity": 1,
       "routing": {
         "tier": "local_zero_token",
         "fallback": ["budget_fast"],
         "tools": []
       },
-      "instructions_for_claude": "Resuelve el problema directamente aplicando el parche minimo necesario. No refactorices codigo adyacente ni cambies comportamiento no relacionado."
+      "instructions": "Solve the problem directly with the minimum necessary patch. Do not refactor adjacent code or change unrelated behavior."
     },
     {
       "id": "arch_testing_qa",
       "archetype": "quality",
-      "label": "Testing / QA / Calidad",
-      "description": "Pruebas unitarias, integracion, e2e, cobertura, TDD, CI de calidad.",
-      "keywords": ["test", "testing", "prueba", "qa", "unitario", "unit", "integracion", "e2e", "pytest", "jest", "cypress", "cobertura", "coverage", "tdd", "mock", "assert", "regresion", "quality", "calidad", "playwright", "selenium"],
+      "label": "Testing / QA / Quality",
+      "description": "Unit, integration, e2e tests, coverage, TDD, quality CI.",
+      "keywords": ["test", "testing", "prueba", "qa", "unit", "unitario", "integration", "integracion", "e2e", "pytest", "jest", "cypress", "coverage", "cobertura", "tdd", "mock", "assert", "regression", "regresion", "quality", "calidad", "playwright", "selenium"],
       "complexity": 3,
       "routing": {
         "tier": "standard_coding",
         "fallback": ["budget_fast"],
         "tools": ["pytest", "jest", "cypress", "playwright", "coverage"]
       },
-      "instructions_for_claude": "Escribe pruebas significativas que validen comportamiento, no implementacion. Cubre casos borde y errores. Ejecuta la suite y reporta la cobertura."
+      "instructions": "Write meaningful tests that validate behavior, not implementation. Cover edge cases and errors. Run the suite and report coverage."
     },
     {
       "id": "arch_database",
       "archetype": "data_modeling",
-      "label": "Base de datos / Modelado",
-      "description": "Modelado de datos, SQL, migraciones, optimizacion de consultas, indices.",
-      "keywords": ["base de datos", "database", "sql", "postgres", "mysql", "sqlite", "mongo", "nosql", "migracion", "schema", "esquema", "consulta", "query", "indice", "index", "tabla", "relacional", "normalizacion", "transaccion", "oracle", "redis", "elastic"],
+      "label": "Database / Data modeling",
+      "description": "Data modeling, SQL, migrations, query optimization, indexes.",
+      "keywords": ["database", "base de datos", "sql", "postgres", "mysql", "sqlite", "mongo", "nosql", "migration", "migracion", "schema", "esquema", "query", "consulta", "index", "indice", "table", "tabla", "relational", "relacional", "normalization", "normalizacion", "transaction", "transaccion", "oracle", "redis", "elastic"],
       "complexity": 3,
       "routing": {
         "tier": "standard_coding",
         "fallback": ["budget_fast"],
         "tools": ["sqlalchemy", "prisma", "dbeaver", "pgadmin"]
       },
-      "instructions_for_claude": "Modela los datos con integridad referencial. Optimiza consultas con indices adecuados. Incluye migraciones versionadas y explica el razonamiento del schema."
+      "instructions": "Model data with referential integrity. Optimize queries with proper indexes. Include versioned migrations and explain schema reasoning."
     },
     {
       "id": "arch_mobile_app",
       "archetype": "mobile",
-      "label": "Aplicaciones moviles",
-      "description": "Apps Android/iOS, React Native, Flutter, Kotlin, Swift.",
-      "keywords": ["movil", "mobile", "android", "ios", "react native", "flutter", "kotlin", "swift", "app", "aplicacion", "dart", "celular", "telefono", "store", "play store", "app store", "notificacion", "offline", "gps", "camara"],
+      "label": "Mobile applications",
+      "description": "Android/iOS apps, React Native, Flutter, Kotlin, Swift.",
+      "keywords": ["mobile", "movil", "android", "ios", "react native", "flutter", "kotlin", "swift", "app", "application", "aplicacion", "dart", "phone", "celular", "telefono", "store", "play store", "app store", "notification", "notificacion", "offline", "gps", "camera", "camara"],
       "complexity": 4,
       "routing": {
         "tier": "standard_coding",
         "fallback": ["budget_fast"],
         "tools": ["flutter", "react native", "xcode", "android studio"]
       },
-      "instructions_for_claude": "Genera codigo movil siguiendo las guias de la plataforma (Material/ HIG). Considera rendimiento, memoria y estados offline. Incluye manejo de permisos."
+      "instructions": "Generate mobile code following platform guidelines (Material/HIG). Consider performance, memory, and offline states. Include permission handling."
     },
     {
       "id": "arch_migration_refactor",
       "archetype": "refactoring",
-      "label": "Migracion / Refactorizacion",
-      "description": "Refactor de codigo legacy, migracion de frameworks, deuda tecnica, mejora de calidad.",
-      "keywords": ["migrar", "migracion", "refactor", "refactorizar", "legacy", "deuda tecnica", "actualizar", "upgrade", "version", "viej", "moderniz", "reescribir", "convertir", "portar", "port", "mantenimiento", "limpiar", "optimizar"],
+      "label": "Migration / Refactoring",
+      "description": "Legacy code refactor, framework migration, technical debt, quality improvement.",
+      "keywords": ["migrate", "migrar", "migration", "migracion", "refactor", "refactorizar", "legacy", "technical debt", "deuda tecnica", "update", "actualizar", "upgrade", "version", "old", "viej", "modernize", "moderniz", "rewrite", "reescribir", "convert", "convertir", "port", "portar", "maintenance", "mantenimiento", "clean", "limpiar", "optimize", "optimizar"],
       "complexity": 4,
       "routing": {
         "tier": "premium_reasoning",
         "fallback": ["standard_coding"],
         "tools": ["eslint", "prettier", "sonarqube"]
       },
-      "instructions_for_claude": "Refactoriza en pasos pequenos y verificables. Preserva el comportamiento externo. Prioriza por riesgo y valor. Documenta que cambio y por que."
+      "instructions": "Refactor in small, verifiable steps. Preserve external behavior. Prioritize by risk and value. Document what changed and why."
     },
     {
       "id": "arch_cli_automation",
       "archetype": "tooling",
-      "label": "CLI / Automatizacion / Scripts",
-      "description": "Scripts de shell, PowerShell, automatizacion, tareas, cron, batch.",
-      "keywords": ["script", "shell", "bash", "powershell", "cli", "terminal", "automatizacion", "automatizar", "cron", "batch", "cmd", "task", "tarea", "zsh", "linux", "windows", "proceso", "workflow", "rpa", "macro"],
+      "label": "CLI / Automation / Scripts",
+      "description": "Shell scripts, PowerShell, automation, cron jobs, batch tasks.",
+      "keywords": ["script", "shell", "bash", "powershell", "cli", "terminal", "automation", "automatizacion", "automate", "automatizar", "cron", "batch", "cmd", "task", "tarea", "zsh", "linux", "windows", "process", "proceso", "workflow", "rpa", "macro"],
       "complexity": 2,
       "routing": {
         "tier": "budget_fast",
         "fallback": ["local_zero_token"],
         "tools": ["pwsh", "bash", "python", "cron"]
       },
-      "instructions_for_claude": "Escribe scripts robustos con manejo de errores, salida clara y flags de ayuda. Compatibles con Windows y Unix cuando sea posible. No uses modulos externos innecesarios."
+      "instructions": "Write robust scripts with error handling, clear output, and help flags. Cross-platform compatible when possible. No unnecessary external modules."
     },
     {
       "id": "arch_game_dev",
       "archetype": "game",
-      "label": "Desarrollo de juegos",
-      "description": "Juegos 2D/3D, Godot, Unity, Three.js, fisica, gameplay.",
-      "keywords": ["juego", "game", "godot", "unity", "unreal", "three.js", "3d", "2d", "gameplay", "fisica", "motor", "graficos", "nivel", "personaje", "sprites", "pixel", "vr", "ar", "realidad virtual", "shader"],
+      "label": "Game development",
+      "description": "2D/3D games, Godot, Unity, Three.js, physics, gameplay.",
+      "keywords": ["game", "juego", "godot", "unity", "unreal", "three.js", "3d", "2d", "gameplay", "physics", "fisica", "engine", "motor", "graphics", "graficos", "level", "nivel", "character", "personaje", "sprites", "pixel", "vr", "ar", "virtual reality", "realidad virtual", "shader"],
       "complexity": 4,
       "routing": {
         "tier": "standard_coding",
         "fallback": ["premium_reasoning"],
         "tools": ["godot", "unity", "three.js", "rapier"]
       },
-      "instructions_for_claude": "Desarrolla con un loop de juego claro. Mantén la logica separada del renderizado. Optimiza el rendimiento para el target de frames."
+      "instructions": "Develop with a clear game loop. Keep logic separated from rendering. Optimize performance for target framerate."
     },
     {
       "id": "arch_research_analysis",
       "archetype": "research",
-      "label": "Investigacion / Analisis tecnico",
-      "description": "Investigacion de mercado, comparativas, estado del arte, analisis de codigo ajeno.",
-      "keywords": ["investigar", "investigacion", "research", "comparar", "comparativa", "analizar", "analisis", "estado del arte", "tendencias", "mercado", "estudio", "revisar", "review", "auditoria de codigo", "leer codigo", "entender", "explorar", "descubrir", "evaluar", "benchmark"],
+      "label": "Research / Technical analysis",
+      "description": "Market research, comparisons, state of the art, external code analysis.",
+      "keywords": ["research", "investigar", "investigacion", "compare", "comparar", "comparison", "comparativa", "analyze", "analizar", "analysis", "analisis", "state of the art", "estado del arte", "trends", "tendencias", "market", "mercado", "study", "estudio", "review", "revisar", "code audit", "auditoria de codigo", "read code", "leer codigo", "understand", "entender", "explore", "explorar", "discover", "descubrir", "evaluate", "evaluar", "benchmark"],
       "complexity": 4,
       "routing": {
         "tier": "premium_reasoning",
         "fallback": ["standard_coding"],
         "tools": ["web", "grep", "git", "docs"]
       },
-      "instructions_for_claude": "Investiga a fondo y entrega un informe estructurado: resumen ejecutivo, hallazgos clave, comparativa si aplica y recomendacion final con justificacion."
+      "instructions": "Research thoroughly and deliver structured report: executive summary, key findings, comparison if applicable, and final recommendation with justification."
     }
   ]
 }

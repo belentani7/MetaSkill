@@ -1,79 +1,81 @@
 # MetaSkill
 
-**Router de tareas zero-token.** Clasifica cualquier petición *localmente* (sin gastar tokens de LLM) y decide qué arquetipo y qué tier de modelo debe ejecutarla, con instrucciones de trabajo incluidas.
+**Zero-token task router for AI coding agents.** Classifies any request *locally* (without burning LLM tokens) and decides which archetype and complexity tier should handle it, with embedded work instructions.
 
 ```
-petición del usuario ──▶ tokenización local ──▶ match contra index.json
-                                                 ├─ arquetipo (ej. mobile, devops, quick_fix)
-                                                 ├─ tier de modelo (local / budget / standard / premium)
-                                                 ├─ fallbacks si ese modelo no está disponible
-                                                 ├─ herramientas sugeridas
-                                                 └─ instrucciones de trabajo para el agente
+user request ──▶ in-context tokenization ──▶ match against index.json
+                                               ├─ archetype (e.g. mobile, devops, quick_fix)
+                                               ├─ complexity tier (1-5)
+                                               ├─ model recommendation
+                                               ├─ fallback chain
+                                               ├─ suggested tools
+                                               └─ work instructions for the agent
 ```
 
-## Por qué existe
+## Why it exists
 
-Elegir modelo a ojo quema tokens: tareas triviales acaban en modelos premium y tareas críticas en modelos débiles. MetaSkill convierte esa decisión en una clasificación determinista de coste cero basada en `index.json` (v8.0.0, 16 arquetipos).
+Choosing a model by gut feeling burns tokens: trivial tasks end up on premium models and critical tasks on weak ones. MetaSkill makes that decision a zero-cost deterministic classification based on `index.json` (v9.0.0, 16 archetypes).
 
-## Uso
-
-### CLI
-
-```bash
-python metaskill.py "quiero hacer una app móvil con flutter para android"
-python metaskill.py "arreglar un bug en el log" --json
-```
-
-Salida: arquetipo ganador, tier, fallbacks, herramientas e instrucciones. Con `--json` para consumo por programas/agentes.
-
-### Como skill (Claude Code y Qwen Code)
-
-`SKILL.md` hace que el agente clasifique la tarea antes de trabajar. El formato es compatible con ambos agentes. Instalación:
+## Install (Qwen Code / Claude Code)
 
 ```powershell
-# Windows (PowerShell): copia la carpeta a ambos agentes
-Copy-Item -Recurse . "$env:USERPROFILE\.claude\skills\metaskill"
+# Windows
 Copy-Item -Recurse . "$env:USERPROFILE\.qwen\skills\metaskill"
+Copy-Item -Recurse . "$env:USERPROFILE\.claude\skills\metaskill"
 ```
 
 ```bash
 # macOS / Linux
-cp -r . ~/.claude/skills/metaskill
 cp -r . ~/.qwen/skills/metaskill
+cp -r . ~/.claude/skills/metaskill
 ```
 
-## Los 4 tiers
+The agent will pick it up automatically on the next session via `SKILL.md`.
 
-| Tier | Alias | Para qué |
-|---|---|---|
-| `local_zero_token` | `ollama` | parches mínimos, typos, fixes triviales |
-| `budget_fast` | `gpt-4o-mini` | scripts, docs, tareas simples |
-| `standard_coding` | `gpt-4o` | desarrollo de producto |
-| `premium_reasoning` | `gpt-4` | arquitectura, migraciones, investigación |
+## How it works
 
-Cada tier tiene una cadena de fallback definida en `index.json` (`fallback_policy`); el último recurso es `premium_reasoning`.
+The agent reads `index.json` and classifies the request by keyword matching — **no Python subprocess, no shell calls, zero additional tokens**. The classification happens in the agent's own reasoning.
 
-## Cómo clasifica (engine `jaccard-zero-token-v2`)
+### 4 tiers
 
-1. Normaliza el texto (minúsculas, sin tildes).
-2. Busca coincidencias con los `keywords` de cada arquetipo (tokens y frases multi-palabra).
-3. Puntúa por cobertura (`coincidencias / keywords del arquetipo`) y desempata por nº de matches y complejidad.
-4. Sin ningún match → tarea no clasificada: se recomienda `premium_reasoning` según la política de fallbacks.
+| Tier | Models | Use for |
+|------|--------|---------|
+| `local_zero_token` | ollama (if available) | typos, trivial patches |
+| `budget_fast` | qwen-flash, deepseek-flash, glm-flash | docs, scripts, simple tasks |
+| `standard_coding` | deepseek-pro, qwen-plus | product development |
+| `premium_reasoning` | qwen-max, deepseek-pro-max | architecture, migrations, research |
 
-## Añadir o editar arquetipos
+### 16 archetypes
 
-Edita `index.json` → `tasks[]`. Cada arquetipo necesita: `id`, `archetype`, `label`, `keywords` (incluye variantes con typos comunes), `complexity` (1-5), `routing` (`tier`, `fallback`, `tools`) e `instructions_for_claude`. El router lo recoge automáticamente.
+Security audit, Frontend/UI, Backend/API, DevOps/IaC, Data science, System architecture, Documentation, Quick fix, Testing/QA, Database, Mobile, Migration/Refactor, CLI/Automation, Game dev, Research.
 
-## Estructura
+### CLI (optional, for external integrations)
+
+```bash
+python metaskill.py "build a mobile app with flutter for android"
+python metaskill.py "fix a bug in the log" --json
+```
+
+Returns archetype, tier, fallbacks, tools, and instructions. Use `--json` for programmatic consumption.
+
+## Adding or editing archetypes
+
+Edit `index.json` → `tasks[]`. Each archetype needs: `id`, `archetype`, `label`, `keywords` (include common typos/variants), `complexity` (1-5), `routing` (`tier`, `fallback`, `tools`) and `instructions`. The router picks it up automatically.
+
+## Structure
 
 ```
-MetaSkill/
-├── SKILL.md      # skill compatible con Claude Code y Qwen Code
-├── metaskill.py  # router zero-token (solo stdlib de Python)
-├── index.json    # índice de arquetipos, tiers y política de fallbacks
+metaskill/
+├── SKILL.md      # skill definition (Qwen Code + Claude Code compatible)
+├── metaskill.py  # optional CLI router (Python stdlib only)
+├── index.json    # archetype index, tiers, and fallback policy
 └── README.md
 ```
 
-## Licencia
+## Model aliases are the only thing that changes
 
-MIT — úsalo, modifícalo y distribúyelo manteniendo el aviso de licencia.
+When a model dies, update **ONLY** `model_aliases` in `index.json`. The routing logic never changes.
+
+## License
+
+MIT — use, modify, and distribute with attribution.
