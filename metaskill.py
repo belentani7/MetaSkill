@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MetaSkill zero-token router (engine: jaccard-zero-token-v2).
+"""MetaSkill zero-token router driven by the version in index.json.
 
 Clasifica una peticion localmente, sin gastar tokens de LLM, contra index.json.
 Solo usa stdlib. Uso:
@@ -14,6 +14,7 @@ from pathlib import Path
 
 INDEX_PATH = Path(__file__).resolve().parent / "index.json"
 UNCLASSIFIED_TIER = "premium_reasoning"
+DEFAULT_ENGINE = "jaccard-zero-token-v3"
 
 
 def normalize(text: str) -> str:
@@ -63,28 +64,41 @@ def classify(request: str, index: dict) -> dict:
 
 
 def build_result(request: str, index: dict) -> dict:
-    index_meta = index.get("meta", {})
+    engine = index.get("engine", DEFAULT_ENGINE)
     aliases = index.get("model_aliases", {})
     fallback_policy = index.get("fallback_policy", {})
     cls = classify(request, index)
     scored = cls["scored"]
 
     if not scored:
-        return {
-            "engine": index_meta.get("engine", "jaccard-zero-token-v2"),
-            "status": "unclassified",
-            "request": request,
-            "tier": UNCLASSIFIED_TIER,
-            "model_alias": aliases.get(UNCLASSIFIED_TIER),
-            "reason": "Sin coincidencias de keywords: tarea nueva o ambigua; la politica de fallbacks recomienda premium_reasoning.",
-            "fallback_policy": fallback_policy.get("note", ""),
-        }
+        quick_fix = next(
+            (task for task in index.get("tasks", []) if task.get("id") == "arch_quick_fix"),
+            None,
+        )
+        if quick_fix:
+            scored = [
+                {
+                    "task": quick_fix,
+                    "matched": [],
+                    "coverage": 0,
+                }
+            ]
+        else:
+            return {
+                "engine": engine,
+                "status": "unclassified",
+                "request": request,
+                "tier": UNCLASSIFIED_TIER,
+                "model_alias": aliases.get(UNCLASSIFIED_TIER),
+                "reason": "Sin coincidencias de keywords: tarea nueva o ambigua; la politica de fallbacks recomienda premium_reasoning.",
+                "fallback_policy": fallback_policy.get("note", ""),
+            }
 
     best = scored[0]["task"]
     routing = best.get("routing", {})
     tier = routing.get("tier")
     return {
-        "engine": index_meta.get("engine", "jaccard-zero-token-v2"),
+        "engine": engine,
         "status": "classified",
         "request": request,
         "task_id": best.get("id"),
@@ -96,7 +110,7 @@ def build_result(request: str, index: dict) -> dict:
         "fallback": routing.get("fallback", []),
         "fallback_aliases": [aliases.get(f) for f in routing.get("fallback", [])],
         "tools": routing.get("tools", []),
-        "instructions": best.get("instructions_for_claude", ""),
+        "instructions": best.get("instructions", best.get("instructions_for_claude", "")),
         "score": {
             "matched_keywords": scored[0]["matched"],
             "keywords_total": len(best.get("keywords", [])),
