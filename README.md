@@ -58,6 +58,17 @@ python metaskill.py "fix a bug in the log" --json
 
 Returns archetype, tier, fallbacks, tools, and instructions. Use `--json` for programmatic consumption.
 
+### Batch de hasta 500 tareas (sin API)
+
+Crea un archivo `requests.json` con un array de textos, por ejemplo:
+
+```json
+["desarrollar portada accesible", "resolver errores de tests", "construir una API"]
+```
+
+Ejecuta `python metaskill.py --batch requests.json > routes.json`. Clasifica cada petición contra el mismo índice local y devuelve un array JSON ordenado, sin llamar a modelos ni ejecutar herramientas externas. Limita el archivo a **1 MB**, cada petición a **10.000 caracteres** y el lote a **500** solicitudes. Un archivo inválido falla antes de producir resultados parciales; las opciones desconocidas devuelven un error de CLI, no se agregan a la petición por accidente.
+
+
 ## Adding or editing archetypes
 
 Edit `index.json` → `tasks[]`. Each archetype needs: `id`, `archetype`, `label`, `keywords` (include common typos/variants), `complexity` (1-5), `routing` (`tier`, `fallback`, `tools`) and `instructions`. The router picks it up automatically.
