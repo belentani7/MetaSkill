@@ -6,6 +6,7 @@ Solo usa stdlib. Uso:
     python metaskill.py "texto de la peticion" [--json]
 """
 
+import argparse
 import json
 import re
 import sys
@@ -152,26 +153,64 @@ def print_human(result: dict) -> None:
     print(f"instrucciones: {result['instructions']}")
 
 
+def _load_batch(path: str) -> list[str]:
+    """Load up to 500 locally supplied requests, with bounded memory."""
+    location = Path(path)
+    if not location.is_file():
+        raise ValueError("Batch file does not exist")
+    with location.open("rb") as handle:
+        data = handle.read(1_000_001)
+    if len(data) > 1_000_000:
+        raise ValueError("Batch file exceeds 1 MB")
+    try:
+        requests = json.loads(data.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Batch must be a UTF-8 JSON array") from exc
+    if not isinstance(requests, list) or not 1 <= len(requests) <= 500:
+        raise ValueError("Batch must have between 1 and 500 requests")
+    for entry in requests:
+        if not isinstance(entry, str) or not entry.strip() or len(entry) > 10_000:
+            raise ValueError("Each batch request must be nonempty text of <=10000 characters")
+    return requests
+
+
 def main(argv: list) -> int:
-    args = [a for a in argv[1:] if not a.startswith("--")]
-    as_json = "--json" in argv[1:]
-    if not args:
-        print(__doc__)
-        print("Falta el texto de la peticion.", file=sys.stderr)
-        return 1
-    request = " ".join(args)
+    parser = argparse.ArgumentParser(
+        prog="metaskill.py",
+        description="Zero-token classification using the local, versioned skill index.",
+    )
+    parser.add_argument("--json", action="store_true", help="Print structured JSON")
+    parser.add_argument("--batch", metavar="INPUT.json", help="Classify up to 500 local prompts")
+    parser.add_argument("request", nargs="*", help="One request to classify")
+    try:
+        opts = parser.parse_args(argv[1:])
+    except SystemExit as exc:
+        return int(exc.code)
+
+    if bool(opts.batch) == bool(opts.request):
+        print("Provide a request OR --batch INPUT.json.", file=sys.stderr)
+        return 2
+
     try:
         index = load_index()
-    except (OSError, json.JSONDecodeError) as exc:
-        print(f"Error leyendo {INDEX_PATH}: {exc}", file=sys.stderr)
+        if opts.batch:
+            requests = _load_batch(opts.batch)
+            # Batch always emits JSON; same classification policy as single mode.
+            print(json.dumps([build_result(req, index) for req in requests], ensure_ascii=False))
+            return 0
+        request = " ".join(opts.request)
+        if len(request) > 10_000:
+            raise ValueError("Request exceeds 10000 characters")
+        result = build_result(request, index)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         return 1
-    result = build_result(request, index)
-    if as_json:
+
+    if opts.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         print_human(result)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
