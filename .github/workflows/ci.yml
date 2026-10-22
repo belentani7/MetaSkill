@@ -14,3 +14,5 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m compileall -q .
+      - name: Test deterministic single and batch routing
+        run: python -m unittest discover -s . -p 'test*.py' -v
