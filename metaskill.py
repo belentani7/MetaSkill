@@ -33,10 +33,19 @@ def load_index() -> dict:
 
 
 def keyword_matches(keyword: str, norm_text: str, tokens: set) -> bool:
-    kw = normalize(keyword)
-    if " " in kw:
-        return kw in norm_text
-    return kw in tokens
+    """Match whole words or adjacent keyword tokens, never arbitrary substrings.
+
+    A phrase like "rate limit" matches "rate-limit" and "rate limit", but
+    does not match "corporate limitations". Punctuation is a separator rather
+    than a source of false positives.
+    """
+    words = re.findall(r"[a-z0-9]+", normalize(keyword))
+    if not words:
+        return False
+    if len(words) == 1:
+        return words[0] in tokens
+    pattern = r"(?<![a-z0-9])" + r"[^a-z0-9]+".join(map(re.escape, words)) + r"(?![a-z0-9])"
+    return re.search(pattern, norm_text) is not None
 
 
 def classify(request: str, index: dict) -> dict:
