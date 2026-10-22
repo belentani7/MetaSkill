@@ -3,6 +3,20 @@ import metaskill
 
 
 class BuildResultContractTests(unittest.TestCase):
+    def test_multiword_keywords_match_tokens_not_infixes(self):
+        phrase = "rate limit"
+        self.assertTrue(metaskill.keyword_matches(phrase, "rate limit exceeded", {"rate", "limit", "exceeded"}))
+        self.assertTrue(metaskill.keyword_matches(phrase, "rate-limit exceeded", {"rate", "limit", "exceeded"}))
+        self.assertFalse(metaskill.keyword_matches(phrase, "corporate limitations", {"corporate", "limitations"}))
+        self.assertFalse(metaskill.keyword_matches(phrase, "separate limited", {"separate", "limited"}))
+
+    def test_punctuation_and_accents_in_phrase_keywords(self):
+        self.assertTrue(metaskill.keyword_matches("interfaz gráfica", "interfaz-grafica",
+                        {"interfaz", "grafica"}))
+        self.assertTrue(metaskill.keyword_matches("three.js", "three.js application",
+                        {"three", "js", "application"}))
+        self.assertFalse(metaskill.keyword_matches("three.js", "threes.js", {"threes", "js"}))
+
     def test_engine_id_matches_loaded_index(self):
         index = metaskill.load_index()
 
