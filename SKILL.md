@@ -10,7 +10,7 @@ Before writing a single line of code, classify the task. Read `index.json` in th
 ## Protocol
 
 1. **Read** `index.json` → scan `tasks[]` for keyword matches against the user's request
-2. **Classify**: pick the archetype with ≥2 keyword matches OR >20% coverage. If none matches → `arch_quick_fix` with complexity 1
+2. **Classify**: pick the archetype with ≥2 keyword matches OR >20% coverage. If none matches → abstain (`unclassified`), request human review; never assume a trivial quick fix
 3. **Report** (briefly, 1-2 lines max):
    - `[archetype] complexity: N/5`
    - If complexity ≤ 2: "→ consider cheaper model (qwen-flash / deepseek-flash) to save tokens"
@@ -20,7 +20,7 @@ Before writing a single line of code, classify the task. Read `index.json` in th
 
 ## Rules
 
-- Classification is in-context: read index.json, match keywords in your reasoning. Zero shell calls, zero latency.
+- Classification is in-context: read index.json, match keywords in your reasoning. Zero shell calls; reading and reasoning still consume the agent's context/tokens.
 - If user names a model explicitly, their choice overrides the router.
 - Multi-part requests: classify each part independently.
 - Never shell out to `python metaskill.py` — that's for external CI/agents, not for in-session use.
