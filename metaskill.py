@@ -67,7 +67,12 @@ def classify(request: str, index: dict) -> dict:
                 }
             )
     scored.sort(
-        key=lambda s: (len(s["matched"]), s["coverage"], s["task"].get("complexity", 0)),
+        key=lambda s: (
+            1 if s["task"].get("archetype") == "security_critical" else 0,
+            len(s["matched"]),
+            s["coverage"],
+            s["task"].get("complexity", 0),
+        ),
         reverse=True,
     )
     return {"scored": scored, "tokens": sorted(tokens)}
