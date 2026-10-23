@@ -81,28 +81,16 @@ def build_result(request: str, index: dict) -> dict:
     scored = cls["scored"]
 
     if not scored:
-        quick_fix = next(
-            (task for task in index.get("tasks", []) if task.get("id") == "arch_quick_fix"),
-            None,
-        )
-        if quick_fix:
-            scored = [
-                {
-                    "task": quick_fix,
-                    "matched": [],
-                    "coverage": 0,
-                }
-            ]
-        else:
-            return {
-                "engine": engine,
-                "status": "unclassified",
-                "request": request,
-                "tier": UNCLASSIFIED_TIER,
-                "model_alias": aliases.get(UNCLASSIFIED_TIER),
-                "reason": "Sin coincidencias de keywords: tarea nueva o ambigua; la politica de fallbacks recomienda premium_reasoning.",
-                "fallback_policy": fallback_policy.get("note", ""),
-            }
+        # Unknown work is not a trivial quick fix. Never auto-select a paid model.
+        return {
+            "engine": engine,
+            "status": "unclassified",
+            "requires_human_review": True,
+            "tier": None,
+            "model_alias": None,
+            "reason": "Sin coincidencias: revisar la tarea antes de elegir modelo o coste.",
+            "fallback_policy": fallback_policy.get("note", ""),
+        }
 
     best = scored[0]["task"]
     routing = best.get("routing", {})
@@ -110,7 +98,6 @@ def build_result(request: str, index: dict) -> dict:
     return {
         "engine": engine,
         "status": "classified",
-        "request": request,
         "task_id": best.get("id"),
         "archetype": best.get("archetype"),
         "label": best.get("label"),
@@ -136,7 +123,7 @@ def build_result(request: str, index: dict) -> dict:
 def print_human(result: dict) -> None:
     if result["status"] == "unclassified":
         print(f"[sin clasificar] {result['reason']}")
-        print(f"  tier sugerido : {result['tier']} ({result.get('model_alias')})")
+        print("  tier sugerido : ninguno (requiere revisión humana)")
         return
     print(f"arquetipo : {result['label']}  ({result['task_id']}, complejidad {result['complexity']})")
     print(f"tier      : {result['tier']}  -> {result.get('model_alias')}")
