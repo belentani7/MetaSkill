@@ -108,5 +108,50 @@ class BuildResultContractTests(unittest.TestCase):
         self.assertIsNone(result["model_alias"])
 
 
+    def test_single_weak_keyword_abstains_without_selecting_paid_model(self):
+        index = {
+            "engine": "jaccard-zero-token-v3",
+            "tasks": [{
+                "id": "arch_security", "archetype": "security", "label": "Security",
+                "complexity": 5,
+                "keywords": ["security", "owasp", "xss", "csrf", "jwt", "crypto"],
+                "routing": {"tier": "premium_reasoning", "fallback": [], "tools": []},
+            }],
+            "model_aliases": {"premium_reasoning": "paid-model"},
+        }
+        result = metaskill.build_result("security", index)
+        self.assertEqual(result["status"], "unclassified")
+        self.assertTrue(result["requires_human_review"])
+        self.assertIsNone(result["model_alias"])
+
+    def test_single_strong_keyword_classifies_when_coverage_exceeds_twenty_percent(self):
+        index = {
+            "tasks": [{
+                "id": "arch_docs", "archetype": "docs", "label": "Docs",
+                "complexity": 2, "keywords": ["readme", "guide", "wiki", "manual"],
+                "routing": {"tier": "budget_fast", "fallback": [], "tools": []},
+            }],
+            "model_aliases": {"budget_fast": "fast-model"},
+        }
+        result = metaskill.build_result("readme", index)
+        self.assertEqual(result["status"], "classified")
+        self.assertEqual(result["task_id"], "arch_docs")
+
+    def test_two_matches_classify_even_with_low_coverage(self):
+        index = {
+            "tasks": [{
+                "id": "arch_backend", "archetype": "backend", "label": "Backend",
+                "complexity": 4,
+                "keywords": ["api", "backend"] + ["unused" + str(i) for i in range(20)],
+                "routing": {"tier": "standard_coding", "fallback": [], "tools": []},
+            }],
+            "model_aliases": {"standard_coding": "code-model"},
+        }
+        result = metaskill.build_result("api backend", index)
+        self.assertEqual(result["status"], "classified")
+        self.assertEqual(result["task_id"], "arch_backend")
+        self.assertEqual(len(result["score"]["matched_keywords"]), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
