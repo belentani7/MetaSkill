@@ -24,7 +24,7 @@ class BuildResultContractTests(unittest.TestCase):
 
         self.assertEqual(result["engine"], "jaccard-zero-token-v3")
 
-    def test_unmatched_request_falls_back_to_quick_fix(self):
+    def test_unmatched_request_abstains_even_if_quick_fix_exists(self):
         quick_fix = {
             "id": "arch_quick_fix",
             "archetype": "simple_maintenance",
@@ -47,10 +47,12 @@ class BuildResultContractTests(unittest.TestCase):
 
         result = metaskill.build_result("an unmatchable request", index)
 
-        self.assertEqual(result["status"], "classified")
-        self.assertEqual(result["task_id"], "arch_quick_fix")
-        self.assertEqual(result["tier"], "local_zero_token")
-        self.assertEqual(result["instructions"], "Apply the smallest safe fix.")
+        self.assertEqual(result["status"], "unclassified")
+        self.assertTrue(result["requires_human_review"])
+        self.assertIsNone(result["tier"])
+        self.assertIsNone(result["model_alias"])
+        self.assertNotIn("task_id", result)
+        self.assertNotIn("request", result)
 
     def test_no_quick_fix_task_keeps_request_unclassified(self):
         index = {
@@ -63,7 +65,7 @@ class BuildResultContractTests(unittest.TestCase):
         result = metaskill.build_result("an unmatchable request", index)
 
         self.assertEqual(result["status"], "unclassified")
-        self.assertEqual(result["tier"], "premium_reasoning")
+        self.assertIsNone(result["tier"])
 
     def test_default_unclassified_alias_uses_premium_reasoning(self):
         index = {
@@ -75,8 +77,35 @@ class BuildResultContractTests(unittest.TestCase):
 
         result = metaskill.build_result("an unmatchable request", index)
 
-        self.assertEqual(result["model_alias"], "premium-model")
+        self.assertIsNone(result["model_alias"])
         self.assertEqual(result["engine"], "jaccard-zero-token-v3")
+
+
+    def test_classified_result_does_not_echo_private_prompt(self):
+        index = {
+            "engine": "jaccard-zero-token-v3",
+            "tasks": [{
+                "id": "arch_security", "archetype": "security", "label": "Security",
+                "complexity": 4, "keywords": ["security"],
+                "routing": {"tier": "premium_reasoning", "fallback": [], "tools": []},
+                "instructions": "Review carefully.",
+            }],
+            "model_aliases": {"premium_reasoning": "premium-model"},
+        }
+        secret = "security audit private-access-token-12345"
+        result = metaskill.build_result(secret, index)
+        self.assertEqual(result["status"], "classified")
+        self.assertNotIn(secret, __import__("json").dumps(result))
+        self.assertNotIn("request", result)
+
+    def test_unclassified_output_has_no_automatic_model_selection(self):
+        result = metaskill.build_result("unrecognized xyzxyz", {
+            "engine": "jaccard-zero-token-v3", "tasks": [],
+            "model_aliases": {"premium_reasoning": "paid-model"},
+        })
+        self.assertEqual(result["status"], "unclassified")
+        self.assertTrue(result["requires_human_review"])
+        self.assertIsNone(result["model_alias"])
 
 
 if __name__ == "__main__":
