@@ -78,7 +78,12 @@ def build_result(request: str, index: dict) -> dict:
     aliases = index.get("model_aliases", {})
     fallback_policy = index.get("fallback_policy", {})
     cls = classify(request, index)
-    scored = cls["scored"]
+    # Mirror SKILL.md: a single weak keyword must not select a costly model.
+    # A strong single-keyword match is allowed only when it covers >20% of the task vocabulary.
+    scored = [
+        item for item in cls["scored"]
+        if len(item["matched"]) >= 2 or item["coverage"] > 0.20
+    ]
 
     if not scored:
         # Unknown work is not a trivial quick fix. Never auto-select a paid model.
