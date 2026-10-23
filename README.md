@@ -14,7 +14,7 @@ user request ──▶ in-context tokenization ──▶ match against index.jso
 
 ## Why it exists
 
-Choosing a model by gut feeling burns tokens: trivial tasks end up on premium models and critical tasks on weak ones. MetaSkill makes that decision a zero-cost deterministic classification based on `index.json` (v9.0.0, 16 archetypes).
+Choosing a model by gut feeling burns tokens: trivial tasks end up on premium models and critical tasks on weak ones. MetaSkill makes that decision a zero-cost deterministic classification based on `index.json` (v9.0.0, 15 archetypes).
 
 ## Install (Qwen Code / Claude Code)
 
@@ -46,7 +46,7 @@ The agent will pick it up automatically on the next session via `SKILL.md`.
 
 ## How it works
 
-The agent reads `index.json` and classifies the request by keyword matching — **no Python subprocess or shell calls; in-context classification still consumes the agent's context**. The classification happens in the agent's own reasoning.
+The agent reads `index.json` and proposes a classification only when at least two keywords match, or keyword coverage exceeds 20%; otherwise it abstains and requests review. It classifies the request by keyword matching — **no Python subprocess or shell calls; in-context classification still consumes the agent's context**. The classification happens in the agent's own reasoning.
 
 ### 4 tiers
 
@@ -57,7 +57,7 @@ The agent reads `index.json` and classifies the request by keyword matching — 
 | `standard_coding` | deepseek-pro, qwen-plus | product development |
 | `premium_reasoning` | qwen-max, deepseek-pro-max | architecture, migrations, research |
 
-### 16 archetypes
+### 15 archetypes
 
 Security audit, Frontend/UI, Backend/API, DevOps/IaC, Data science, System architecture, Documentation, Quick fix, Testing/QA, Database, Mobile, Migration/Refactor, CLI/Automation, Game dev, Research.
 
