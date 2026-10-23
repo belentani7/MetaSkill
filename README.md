@@ -1,6 +1,6 @@
 # MetaSkill
 
-**Zero-token task router for AI coding agents.** Classifies any request *locally* (without burning LLM tokens) and decides which archetype and complexity tier should handle it, with embedded work instructions.
+**Local task router for AI coding agents.** The optional Python CLI classifies requests without calling an LLM. In-agent classification consumes context tokens. Uncertain requests remain unclassified instead of selecting a paid model automatically.
 
 ```
 user request ──▶ in-context tokenization ──▶ match against index.json
@@ -46,7 +46,7 @@ The agent will pick it up automatically on the next session via `SKILL.md`.
 
 ## How it works
 
-The agent reads `index.json` and proposes a classification only when at least two keywords match, or keyword coverage exceeds 20%; otherwise it abstains and requests review. It classifies the request by keyword matching — **no Python subprocess or shell calls; in-context classification still consumes the agent's context**. The classification happens in the agent's own reasoning.
+The agent reads `index.json` and matches whole-word keywords. A classification requires at least two matched keywords or more than 20% coverage of a task's keyword list; otherwise it abstains and requests review. **In-agent reasoning consumes context tokens**; the optional Python CLI does not call any external model.
 
 ### 4 tiers
 
