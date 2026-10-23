@@ -78,6 +78,24 @@ class BuildResultContractTests(unittest.TestCase):
         self.assertEqual(result["model_alias"], "premium-model")
         self.assertEqual(result["engine"], "jaccard-zero-token-v3")
 
+    def test_security_critical_supersedes_many_frontend_keywords(self):
+        index = metaskill.load_index()
+        result = metaskill.build_result(
+            "create UI css component dashboard to fix JWT vulnerability",
+            index,
+        )
+        self.assertEqual(result["archetype"], "security_critical")
+        self.assertEqual(result["tier"], "premium_reasoning")
+        self.assertIn("jwt", result["score"]["matched_keywords"])
+
+    def test_non_security_frontend_still_uses_ui_route(self):
+        index = metaskill.load_index()
+        result = metaskill.build_result(
+            "create UI css dashboard component",
+            index,
+        )
+        self.assertEqual(result["archetype"], "ui_creative")
+
 
 if __name__ == "__main__":
     unittest.main()
