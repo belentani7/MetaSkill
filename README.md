@@ -14,7 +14,7 @@ user request ──▶ in-context tokenization ──▶ match against index.jso
 
 ## Why it exists
 
-Choosing a model by gut feeling burns tokens: trivial tasks end up on premium models and critical tasks on weak ones. MetaSkill makes that decision a zero-cost deterministic classification based on `index.json` (v9.0.0, 15 archetypes).
+Choosing a model by gut feeling burns tokens: trivial tasks end up on premium models and critical tasks on weak ones. MetaSkill provides a deterministic local CLI recommendation without external model calls based on `index.json` (v9.0.0, 15 archetypes).
 
 ## Install (Qwen Code / Claude Code)
 
