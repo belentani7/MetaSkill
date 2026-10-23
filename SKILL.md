@@ -24,7 +24,7 @@ Before writing a single line of code, classify the task. Read `index.json` in th
 - If user names a model explicitly, their choice overrides the router.
 - Multi-part requests: classify each part independently.
 - Never shell out to `python metaskill.py` — that's for external CI/agents, not for in-session use.
-- The index has 16 archetypes covering: security, frontend, backend, devops, data, architecture, docs, quick-fix, testing, database, mobile, migration, CLI, game-dev, research, and more.
+- The index has 15 archetypes covering: security, frontend, backend, devops, data, architecture, docs, quick-fix, testing, database, mobile, migration, CLI, game-dev, research, and more.
 
 ## Tier → Model mapping (Qwen Code / DashScope)
 
