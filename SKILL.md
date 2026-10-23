@@ -3,7 +3,7 @@ name: metaskill
 description: "Use when starting any non-trivial task, before writing code, to decide work approach and complexity tier. Also when user asks which model to use, says 'route this', 'qué modelo', or when choosing between cheap and premium model. Triggers on: task classification, model selection, cost optimization, routing."
 ---
 
-# MetaSkill — zero-token task router
+# MetaSkill — local task router
 
 Before writing a single line of code, classify the task. Read `index.json` in this skill's directory, tokenize the user's request mentally, and match against archetype keywords.
 
