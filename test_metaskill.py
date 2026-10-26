@@ -17,6 +17,13 @@ class BuildResultContractTests(unittest.TestCase):
                         {"three", "js", "application"}))
         self.assertFalse(metaskill.keyword_matches("three.js", "threes.js", {"threes", "js"}))
 
+    def test_unicode_keywords_and_word_boundaries(self):
+        self.assertEqual(metaskill.tokenize("Crear interfaz 中文 y приложение"), {"crear", "interfaz", "中文", "y", "приложение"})
+        self.assertTrue(metaskill.keyword_matches("中文", metaskill.normalize("中文 应用"), metaskill.tokenize("中文 应用")))
+        self.assertTrue(metaskill.keyword_matches("приложение", metaskill.normalize("создать приложение"), metaskill.tokenize("создать приложение")))
+        self.assertFalse(metaskill.keyword_matches("app", metaskill.normalize("applicable"), metaskill.tokenize("applicable")))
+        self.assertFalse(metaskill.keyword_matches("中文", metaskill.normalize("前中文后"), metaskill.tokenize("前中文后")))
+
     def test_engine_id_matches_loaded_index(self):
         index = metaskill.load_index()
 
