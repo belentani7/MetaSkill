@@ -18,29 +18,19 @@ Choosing a model by gut feeling burns tokens: trivial tasks end up on premium mo
 
 ## Install (Qwen Code / Claude Code)
 
-The skill only needs `SKILL.md` and `index.json`. **Do not copy the entire repository** into agent skill folders: that would also copy Git history, tests, and unrelated files. The commands below **refuse to overwrite** an existing installation. Review its contents and back it up before upgrading.
+The skill only needs `SKILL.md` and `index.json`. **Do not copy the entire repository** into agent skill folders: that would also copy Git history, tests, and unrelated files. The installers check both destinations before copying and **refuse to overwrite** an existing installation. Review its contents and back it up before upgrading.
 
 ```powershell
 # Windows PowerShell 5/7 — run from this repository's root
-foreach ($agent in @(".qwen", ".claude")) {
-    $target = Join-Path $HOME "$agent/skills/metaskill"
-    if (Test-Path -LiteralPath $target) { throw "Already installed: $target" }
-    New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Copy-Item -LiteralPath "SKILL.md", "index.json" -Destination $target
-}
+& ./scripts/install.ps1
 ```
 
 ```bash
 # macOS / Linux — run from this repository's root
-for agent in .qwen .claude; do
-  target="$HOME/$agent/skills/metaskill"
-  if [ -e "$target" ]; then echo "Already installed: $target" >&2; exit 1; fi
-  mkdir -p "$target"
-  cp SKILL.md index.json "$target/"
-done
+bash scripts/install.sh
 ```
 
-The optional `metaskill.py` CLI remains in this repository. Uninstall only after reviewing the target directory; these commands never remove user data.
+For a disposable test, set `METASKILL_INSTALL_ROOT` to an empty directory before running either installer. The optional `metaskill.py` CLI remains in this repository. Uninstall only after reviewing the target directory; these commands never remove user data.
 
 The agent will pick it up automatically on the next session via `SKILL.md`.
 
