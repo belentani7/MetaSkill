@@ -24,6 +24,29 @@ class BuildResultContractTests(unittest.TestCase):
         self.assertFalse(metaskill.keyword_matches("app", metaskill.normalize("applicable"), metaskill.tokenize("applicable")))
         self.assertFalse(metaskill.keyword_matches("中文", metaskill.normalize("前中文后"), metaskill.tokenize("前中文后")))
 
+    def test_conflicting_tied_cost_tiers_require_review(self):
+        tasks = [
+            {"id": "frontend", "keywords": ["app", "ui"], "complexity": 3,
+             "routing": {"tier": "standard_coding"}},
+            {"id": "security", "keywords": ["app", "auth"], "complexity": 3,
+             "routing": {"tier": "premium_reasoning"}},
+        ]
+        result = metaskill.build_result("app ui auth", {"tasks": tasks})
+        self.assertEqual(result["status"], "unclassified")
+        self.assertEqual(result["candidate_task_ids"], ["frontend", "security"])
+        self.assertIsNone(result["model_alias"])
+
+    def test_tied_same_cost_tier_remains_classifiable(self):
+        tasks = [
+            {"id": "frontend", "keywords": ["app", "ui"], "complexity": 3,
+             "routing": {"tier": "standard_coding"}},
+            {"id": "design", "keywords": ["app", "ux"], "complexity": 3,
+             "routing": {"tier": "standard_coding"}},
+        ]
+        result = metaskill.build_result("app ui ux", {"tasks": tasks})
+        self.assertEqual(result["status"], "classified")
+        self.assertEqual(result["tier"], "standard_coding")
+
     def test_engine_id_matches_loaded_index(self):
         index = metaskill.load_index()
 
