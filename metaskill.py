@@ -98,6 +98,24 @@ def build_result(request: str, index: dict) -> dict:
         }
 
     best = scored[0]["task"]
+    # Do not silently pick a model when equally ranked archetypes disagree.
+    # A stable ID tie-breaker would make the outcome deterministic but arbitrary.
+    top = scored[0]
+    tied = [item for item in scored if (
+        len(item["matched"]), item["coverage"], item["task"].get("complexity", 0)
+    ) == (len(top["matched"]), top["coverage"], best.get("complexity", 0))]
+    tiers = {item["task"].get("routing", {}).get("tier") for item in tied}
+    if len(tiers) > 1:
+        return {
+            "engine": engine,
+            "status": "unclassified",
+            "requires_human_review": True,
+            "tier": None,
+            "model_alias": None,
+            "reason": "Empate entre categorías con costes distintos: requiere revisión.",
+            "candidate_task_ids": sorted(str(item["task"].get("id", "")) for item in tied),
+            "fallback_policy": fallback_policy.get("note", ""),
+        }
     routing = best.get("routing", {})
     tier = routing.get("tier")
     return {
