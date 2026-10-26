@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""MetaSkill zero-token router driven by the version in index.json.
+"""MetaSkill local deterministic router driven by index.json.
 
-Clasifica una peticion localmente, sin gastar tokens de LLM, contra index.json.
+Clasifica una peticion localmente, sin llamadas a modelos, contra index.json.
 Solo usa stdlib. Uso:
     python metaskill.py "texto de la peticion" [--json]
 """
@@ -14,7 +14,6 @@ import unicodedata
 from pathlib import Path
 
 INDEX_PATH = Path(__file__).resolve().parent / "index.json"
-UNCLASSIFIED_TIER = "premium_reasoning"
 DEFAULT_ENGINE = "jaccard-zero-token-v3"
 
 
@@ -25,7 +24,8 @@ def normalize(text: str) -> str:
 
 
 def tokenize(text: str) -> set:
-    return set(re.split(r"[^a-z0-9]+", normalize(text))) - {""}
+    """Keep Unicode letters and numbers, including non-Latin languages."""
+    return set(re.findall(r"[^\W_]+", normalize(text), flags=re.UNICODE))
 
 
 def load_index() -> dict:
@@ -40,12 +40,12 @@ def keyword_matches(keyword: str, norm_text: str, tokens: set) -> bool:
     does not match "corporate limitations". Punctuation is a separator rather
     than a source of false positives.
     """
-    words = re.findall(r"[a-z0-9]+", normalize(keyword))
+    words = re.findall(r"[^\W_]+", normalize(keyword), flags=re.UNICODE)
     if not words:
         return False
     if len(words) == 1:
         return words[0] in tokens
-    pattern = r"(?<![a-z0-9])" + r"[^a-z0-9]+".join(map(re.escape, words)) + r"(?![a-z0-9])"
+    pattern = r"(?<!\w)" + r"[\W_]+".join(map(re.escape, words)) + r"(?!\w)"
     return re.search(pattern, norm_text) is not None
 
 
@@ -169,7 +169,7 @@ def _load_batch(path: str) -> list[str]:
 def main(argv: list) -> int:
     parser = argparse.ArgumentParser(
         prog="metaskill.py",
-        description="Zero-token classification using the local, versioned skill index.",
+        description="Local deterministic classification without external model calls.",
     )
     parser.add_argument("--json", action="store_true", help="Print structured JSON")
     parser.add_argument("--batch", metavar="INPUT.json", help="Classify up to 500 local prompts")
