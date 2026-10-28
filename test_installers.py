@@ -62,5 +62,50 @@ class InstallerTests(unittest.TestCase):
         self.exercise([powershell, "-NoProfile", "-NonInteractive", "-File", str(ROOT / "scripts" / "install.ps1")])
 
 
+    def exercise_linked_parent(self, command):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            profile = root / "profile"
+            outside = root / "external-skills"
+            (profile / ".qwen").mkdir(parents=True)
+            outside.mkdir()
+            link = profile / ".qwen" / "skills"
+            try:
+                link.symlink_to(outside, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                if os.name != "nt":
+                    self.skipTest("Directory symlinks unavailable")
+                junction = subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(link), str(outside)],
+                    text=True, capture_output=True,
+                )
+                if junction.returncode != 0:
+                    self.skipTest("Directory symlinks and junctions unavailable")
+            env = os.environ.copy()
+            env["METASKILL_INSTALL_ROOT"] = str(profile)
+            result = subprocess.run(command, cwd=ROOT, env=env, text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Unsafe linked install path", result.stdout + result.stderr)
+            self.assertFalse((outside / "metaskill").exists())
+            self.assertFalse((profile / ".claude").exists())
+
+    def test_bash_installer_refuses_linked_parent(self):
+        bash = os.environ.get("METASKILL_TEST_BASH") or shutil.which("bash")
+        if not bash:
+            self.fail("Bash is required for installer verification")
+        self.exercise_linked_parent([bash, str(ROOT / "scripts" / "install.sh")])
+
+    def test_powershell_installer_refuses_linked_parent(self):
+        powershell = (
+            os.environ.get("METASKILL_TEST_POWERSHELL")
+            or shutil.which("pwsh")
+            or shutil.which("powershell.exe")
+        )
+        if not powershell:
+            if os.name == "nt":
+                self.fail("PowerShell is required on Windows for installer verification")
+            self.skipTest("PowerShell is not installed on this OS")
+        self.exercise_linked_parent([powershell, "-NoProfile", "-NonInteractive", "-File", str(ROOT / "scripts" / "install.ps1")])
+
 if __name__ == "__main__":
     unittest.main()
