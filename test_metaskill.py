@@ -17,6 +17,36 @@ class BuildResultContractTests(unittest.TestCase):
                         {"three", "js", "application"}))
         self.assertFalse(metaskill.keyword_matches("three.js", "threes.js", {"threes", "js"}))
 
+    def test_unicode_keywords_and_word_boundaries(self):
+        self.assertEqual(metaskill.tokenize("Crear interfaz 中文 y приложение"), {"crear", "interfaz", "中文", "y", "приложение"})
+        self.assertTrue(metaskill.keyword_matches("中文", metaskill.normalize("中文 应用"), metaskill.tokenize("中文 应用")))
+        self.assertTrue(metaskill.keyword_matches("приложение", metaskill.normalize("создать приложение"), metaskill.tokenize("создать приложение")))
+        self.assertFalse(metaskill.keyword_matches("app", metaskill.normalize("applicable"), metaskill.tokenize("applicable")))
+        self.assertFalse(metaskill.keyword_matches("中文", metaskill.normalize("前中文后"), metaskill.tokenize("前中文后")))
+
+    def test_conflicting_tied_cost_tiers_require_review(self):
+        tasks = [
+            {"id": "frontend", "keywords": ["app", "ui"], "complexity": 3,
+             "routing": {"tier": "standard_coding"}},
+            {"id": "security", "keywords": ["app", "auth"], "complexity": 3,
+             "routing": {"tier": "premium_reasoning"}},
+        ]
+        result = metaskill.build_result("app ui auth", {"tasks": tasks})
+        self.assertEqual(result["status"], "unclassified")
+        self.assertEqual(result["candidate_task_ids"], ["frontend", "security"])
+        self.assertIsNone(result["model_alias"])
+
+    def test_tied_same_cost_tier_remains_classifiable(self):
+        tasks = [
+            {"id": "frontend", "keywords": ["app", "ui"], "complexity": 3,
+             "routing": {"tier": "standard_coding"}},
+            {"id": "design", "keywords": ["app", "ux"], "complexity": 3,
+             "routing": {"tier": "standard_coding"}},
+        ]
+        result = metaskill.build_result("app ui ux", {"tasks": tasks})
+        self.assertEqual(result["status"], "classified")
+        self.assertEqual(result["tier"], "standard_coding")
+
     def test_engine_id_matches_loaded_index(self):
         index = metaskill.load_index()
 
@@ -24,7 +54,7 @@ class BuildResultContractTests(unittest.TestCase):
 
         self.assertEqual(result["engine"], "jaccard-zero-token-v3")
 
-    def test_unmatched_request_falls_back_to_quick_fix(self):
+    def test_unmatched_request_abstains_even_if_quick_fix_exists(self):
         quick_fix = {
             "id": "arch_quick_fix",
             "archetype": "simple_maintenance",
@@ -47,10 +77,12 @@ class BuildResultContractTests(unittest.TestCase):
 
         result = metaskill.build_result("an unmatchable request", index)
 
-        self.assertEqual(result["status"], "classified")
-        self.assertEqual(result["task_id"], "arch_quick_fix")
-        self.assertEqual(result["tier"], "local_zero_token")
-        self.assertEqual(result["instructions"], "Apply the smallest safe fix.")
+        self.assertEqual(result["status"], "unclassified")
+        self.assertTrue(result["requires_human_review"])
+        self.assertIsNone(result["tier"])
+        self.assertIsNone(result["model_alias"])
+        self.assertNotIn("task_id", result)
+        self.assertNotIn("request", result)
 
     def test_no_quick_fix_task_keeps_request_unclassified(self):
         index = {
@@ -63,7 +95,7 @@ class BuildResultContractTests(unittest.TestCase):
         result = metaskill.build_result("an unmatchable request", index)
 
         self.assertEqual(result["status"], "unclassified")
-        self.assertEqual(result["tier"], "premium_reasoning")
+        self.assertIsNone(result["tier"])
 
     def test_default_unclassified_alias_uses_premium_reasoning(self):
         index = {
@@ -75,8 +107,80 @@ class BuildResultContractTests(unittest.TestCase):
 
         result = metaskill.build_result("an unmatchable request", index)
 
-        self.assertEqual(result["model_alias"], "premium-model")
+        self.assertIsNone(result["model_alias"])
         self.assertEqual(result["engine"], "jaccard-zero-token-v3")
+
+
+    def test_classified_result_does_not_echo_private_prompt(self):
+        index = {
+            "engine": "jaccard-zero-token-v3",
+            "tasks": [{
+                "id": "arch_security", "archetype": "security", "label": "Security",
+                "complexity": 4, "keywords": ["security"],
+                "routing": {"tier": "premium_reasoning", "fallback": [], "tools": []},
+                "instructions": "Review carefully.",
+            }],
+            "model_aliases": {"premium_reasoning": "premium-model"},
+        }
+        secret = "security audit private-access-token-12345"
+        result = metaskill.build_result(secret, index)
+        self.assertEqual(result["status"], "classified")
+        self.assertNotIn(secret, __import__("json").dumps(result))
+        self.assertNotIn("request", result)
+
+    def test_unclassified_output_has_no_automatic_model_selection(self):
+        result = metaskill.build_result("unrecognized xyzxyz", {
+            "engine": "jaccard-zero-token-v3", "tasks": [],
+            "model_aliases": {"premium_reasoning": "paid-model"},
+        })
+        self.assertEqual(result["status"], "unclassified")
+        self.assertTrue(result["requires_human_review"])
+        self.assertIsNone(result["model_alias"])
+
+
+    def test_single_weak_keyword_abstains_without_selecting_paid_model(self):
+        index = {
+            "engine": "jaccard-zero-token-v3",
+            "tasks": [{
+                "id": "arch_security", "archetype": "security", "label": "Security",
+                "complexity": 5,
+                "keywords": ["security", "owasp", "xss", "csrf", "jwt", "crypto"],
+                "routing": {"tier": "premium_reasoning", "fallback": [], "tools": []},
+            }],
+            "model_aliases": {"premium_reasoning": "paid-model"},
+        }
+        result = metaskill.build_result("security", index)
+        self.assertEqual(result["status"], "unclassified")
+        self.assertTrue(result["requires_human_review"])
+        self.assertIsNone(result["model_alias"])
+
+    def test_single_strong_keyword_classifies_when_coverage_exceeds_twenty_percent(self):
+        index = {
+            "tasks": [{
+                "id": "arch_docs", "archetype": "docs", "label": "Docs",
+                "complexity": 2, "keywords": ["readme", "guide", "wiki", "manual"],
+                "routing": {"tier": "budget_fast", "fallback": [], "tools": []},
+            }],
+            "model_aliases": {"budget_fast": "fast-model"},
+        }
+        result = metaskill.build_result("readme", index)
+        self.assertEqual(result["status"], "classified")
+        self.assertEqual(result["task_id"], "arch_docs")
+
+    def test_two_matches_classify_even_with_low_coverage(self):
+        index = {
+            "tasks": [{
+                "id": "arch_backend", "archetype": "backend", "label": "Backend",
+                "complexity": 4,
+                "keywords": ["api", "backend"] + ["unused" + str(i) for i in range(20)],
+                "routing": {"tier": "standard_coding", "fallback": [], "tools": []},
+            }],
+            "model_aliases": {"standard_coding": "code-model"},
+        }
+        result = metaskill.build_result("api backend", index)
+        self.assertEqual(result["status"], "classified")
+        self.assertEqual(result["task_id"], "arch_backend")
+        self.assertEqual(len(result["score"]["matched_keywords"]), 2)
 
 
 if __name__ == "__main__":

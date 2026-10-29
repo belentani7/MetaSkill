@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""MetaSkill zero-token router driven by the version in index.json.
+"""MetaSkill local deterministic router driven by index.json.
 
-Clasifica una peticion localmente, sin gastar tokens de LLM, contra index.json.
+Clasifica una peticion localmente, sin llamadas a modelos, contra index.json.
 Solo usa stdlib. Uso:
     python metaskill.py "texto de la peticion" [--json]
 """
@@ -14,7 +14,6 @@ import unicodedata
 from pathlib import Path
 
 INDEX_PATH = Path(__file__).resolve().parent / "index.json"
-UNCLASSIFIED_TIER = "premium_reasoning"
 DEFAULT_ENGINE = "jaccard-zero-token-v3"
 
 
@@ -25,7 +24,8 @@ def normalize(text: str) -> str:
 
 
 def tokenize(text: str) -> set:
-    return set(re.split(r"[^a-z0-9]+", normalize(text))) - {""}
+    """Keep Unicode letters and numbers, including non-Latin languages."""
+    return set(re.findall(r"[^\W_]+", normalize(text), flags=re.UNICODE))
 
 
 def load_index() -> dict:
@@ -40,12 +40,12 @@ def keyword_matches(keyword: str, norm_text: str, tokens: set) -> bool:
     does not match "corporate limitations". Punctuation is a separator rather
     than a source of false positives.
     """
-    words = re.findall(r"[a-z0-9]+", normalize(keyword))
+    words = re.findall(r"[^\W_]+", normalize(keyword), flags=re.UNICODE)
     if not words:
         return False
     if len(words) == 1:
         return words[0] in tokens
-    pattern = r"(?<![a-z0-9])" + r"[^a-z0-9]+".join(map(re.escape, words)) + r"(?![a-z0-9])"
+    pattern = r"(?<!\w)" + r"[\W_]+".join(map(re.escape, words)) + r"(?!\w)"
     return re.search(pattern, norm_text) is not None
 
 
@@ -78,39 +78,49 @@ def build_result(request: str, index: dict) -> dict:
     aliases = index.get("model_aliases", {})
     fallback_policy = index.get("fallback_policy", {})
     cls = classify(request, index)
-    scored = cls["scored"]
+    # Mirror SKILL.md: a single weak keyword must not select a costly model.
+    # A strong single-keyword match is allowed only when it covers >20% of the task vocabulary.
+    scored = [
+        item for item in cls["scored"]
+        if len(item["matched"]) >= 2 or item["coverage"] > 0.20
+    ]
 
     if not scored:
-        quick_fix = next(
-            (task for task in index.get("tasks", []) if task.get("id") == "arch_quick_fix"),
-            None,
-        )
-        if quick_fix:
-            scored = [
-                {
-                    "task": quick_fix,
-                    "matched": [],
-                    "coverage": 0,
-                }
-            ]
-        else:
-            return {
-                "engine": engine,
-                "status": "unclassified",
-                "request": request,
-                "tier": UNCLASSIFIED_TIER,
-                "model_alias": aliases.get(UNCLASSIFIED_TIER),
-                "reason": "Sin coincidencias de keywords: tarea nueva o ambigua; la politica de fallbacks recomienda premium_reasoning.",
-                "fallback_policy": fallback_policy.get("note", ""),
-            }
+        # Unknown work is not a trivial quick fix. Never auto-select a paid model.
+        return {
+            "engine": engine,
+            "status": "unclassified",
+            "requires_human_review": True,
+            "tier": None,
+            "model_alias": None,
+            "reason": "Sin coincidencias: revisar la tarea antes de elegir modelo o coste.",
+            "fallback_policy": fallback_policy.get("note", ""),
+        }
 
     best = scored[0]["task"]
+    # Do not silently pick a model when equally ranked archetypes disagree.
+    # A stable ID tie-breaker would make the outcome deterministic but arbitrary.
+    top = scored[0]
+    tied = [item for item in scored if (
+        len(item["matched"]), item["coverage"], item["task"].get("complexity", 0)
+    ) == (len(top["matched"]), top["coverage"], best.get("complexity", 0))]
+    tiers = {item["task"].get("routing", {}).get("tier") for item in tied}
+    if len(tiers) > 1:
+        return {
+            "engine": engine,
+            "status": "unclassified",
+            "requires_human_review": True,
+            "tier": None,
+            "model_alias": None,
+            "reason": "Empate entre categorías con costes distintos: requiere revisión.",
+            "candidate_task_ids": sorted(str(item["task"].get("id", "")) for item in tied),
+            "fallback_policy": fallback_policy.get("note", ""),
+        }
     routing = best.get("routing", {})
     tier = routing.get("tier")
     return {
         "engine": engine,
         "status": "classified",
-        "request": request,
         "task_id": best.get("id"),
         "archetype": best.get("archetype"),
         "label": best.get("label"),
@@ -136,7 +146,7 @@ def build_result(request: str, index: dict) -> dict:
 def print_human(result: dict) -> None:
     if result["status"] == "unclassified":
         print(f"[sin clasificar] {result['reason']}")
-        print(f"  tier sugerido : {result['tier']} ({result.get('model_alias')})")
+        print("  tier sugerido : ninguno (requiere revisión humana)")
         return
     print(f"arquetipo : {result['label']}  ({result['task_id']}, complejidad {result['complexity']})")
     print(f"tier      : {result['tier']}  -> {result.get('model_alias')}")
@@ -177,7 +187,7 @@ def _load_batch(path: str) -> list[str]:
 def main(argv: list) -> int:
     parser = argparse.ArgumentParser(
         prog="metaskill.py",
-        description="Zero-token classification using the local, versioned skill index.",
+        description="Local deterministic classification without external model calls.",
     )
     parser.add_argument("--json", action="store_true", help="Print structured JSON")
     parser.add_argument("--batch", metavar="INPUT.json", help="Classify up to 500 local prompts")

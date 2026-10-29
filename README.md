@@ -1,6 +1,6 @@
 # MetaSkill
 
-**Zero-token task router for AI coding agents.** Classifies any request *locally* (without burning LLM tokens) and decides which archetype and complexity tier should handle it, with embedded work instructions.
+**Local task router for AI coding agents.** The optional Python CLI classifies requests without calling an LLM. In-agent classification consumes context tokens. Uncertain requests remain unclassified instead of selecting a paid model automatically.
 
 ```
 user request ──▶ in-context tokenization ──▶ match against index.json
@@ -14,27 +14,29 @@ user request ──▶ in-context tokenization ──▶ match against index.jso
 
 ## Why it exists
 
-Choosing a model by gut feeling burns tokens: trivial tasks end up on premium models and critical tasks on weak ones. MetaSkill makes that decision a zero-cost deterministic classification based on `index.json` (v9.0.0, 16 archetypes).
+Choosing a model by gut feeling burns tokens: trivial tasks end up on premium models and critical tasks on weak ones. MetaSkill provides a deterministic local CLI recommendation without external model calls based on `index.json` (v9.0.0, 15 archetypes).
 
 ## Install (Qwen Code / Claude Code)
 
+The skill only needs `SKILL.md` and `index.json`. **Do not copy the entire repository** into agent skill folders: that would also copy Git history, tests, and unrelated files. The installers check both destinations before copying and **refuse to overwrite** an existing installation. Review its contents and back it up before upgrading.
+
 ```powershell
-# Windows
-Copy-Item -Recurse . "$env:USERPROFILE\.qwen\skills\metaskill"
-Copy-Item -Recurse . "$env:USERPROFILE\.claude\skills\metaskill"
+# Windows PowerShell 5/7 — run from this repository's root
+& ./scripts/install.ps1
 ```
 
 ```bash
-# macOS / Linux
-cp -r . ~/.qwen/skills/metaskill
-cp -r . ~/.claude/skills/metaskill
+# macOS / Linux — run from this repository's root
+bash scripts/install.sh
 ```
+
+For a disposable test, set `METASKILL_INSTALL_ROOT` to an empty directory before running either installer. The optional `metaskill.py` CLI remains in this repository. Uninstall only after reviewing the target directory; these commands never remove user data.
 
 The agent will pick it up automatically on the next session via `SKILL.md`.
 
 ## How it works
 
-The agent reads `index.json` and classifies the request by keyword matching — **no Python subprocess, no shell calls, zero additional tokens**. The classification happens in the agent's own reasoning.
+The agent reads `index.json` and matches whole-word keywords. A classification requires at least two matched keywords or more than 20% coverage of a task's keyword list; otherwise it abstains and requests review. **In-agent reasoning consumes context tokens**; the optional Python CLI does not call any external model.
 
 ### 4 tiers
 
@@ -45,7 +47,7 @@ The agent reads `index.json` and classifies the request by keyword matching — 
 | `standard_coding` | deepseek-pro, qwen-plus | product development |
 | `premium_reasoning` | qwen-max, deepseek-pro-max | architecture, migrations, research |
 
-### 16 archetypes
+### 15 archetypes
 
 Security audit, Frontend/UI, Backend/API, DevOps/IaC, Data science, System architecture, Documentation, Quick fix, Testing/QA, Database, Mobile, Migration/Refactor, CLI/Automation, Game dev, Research.
 
